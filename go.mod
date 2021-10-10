@@ -1,4 +1,4 @@
-module github.com/starshiptroopers/uidgenerator
+module github.com/starshiptroopers/webserver
 
 go 1.14
 
