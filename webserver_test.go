@@ -51,7 +51,7 @@ func TestWebServer_Run(t *testing.T) {
 	webServerConfig := WebServerConfig{
 		Logger:     &logger,
 		LoggerHttp: &logger,
-		Port:       8001,
+		Port:       9091,
 	}
 
 	webServer, err := NewWebServer(webServerConfig)
