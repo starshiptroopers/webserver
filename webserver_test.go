@@ -5,7 +5,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"os"
 	"testing"
@@ -52,7 +51,7 @@ func TestWebServer_Run(t *testing.T) {
 	webServerConfig := WebServerConfig{
 		Logger:     &logger,
 		LoggerHttp: &logger,
-		Port:       9091,
+		Port:       8001,
 	}
 
 	webServer, err := NewWebServer(webServerConfig)
@@ -70,7 +69,7 @@ func TestWebServer_Run(t *testing.T) {
 
 	resp, err := client.Get("http://localhost:9091")
 	if err != nil {
-		log.Fatalf("Failed get: %s", err)
+		t.Fatalf("Failed get: %s", err)
 	}
 
 	defer resp.Body.Close()

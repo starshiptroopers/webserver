@@ -172,5 +172,9 @@ func (w WebServer) Run() {
 	log := *(w.config.Logger)
 	log.Info().Int("Port", w.config.Port).Msg("Starting listener")
 
-	w.gin.Run(":" + strconv.Itoa(w.config.Port))
+	err := w.gin.Run(":" + strconv.Itoa(w.config.Port))
+
+	if err != nil {
+		log.Error().Msgf("webserver startup error: %v", err)
+	}
 }
