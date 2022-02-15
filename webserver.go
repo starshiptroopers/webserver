@@ -158,10 +158,14 @@ func (w *WebServer) robotsDetect(names []string) gin.HandlerFunc {
 		regexps = append(regexps, regexp.MustCompile("(?i)"+name))
 	}
 	return func(c *gin.Context) {
-		c.Set("robot", false)
-		for _, rgxp := range regexps {
-			if rgxp.MatchString(c.Request.UserAgent()) {
-				c.Set("robot", true)
+		if c.GetHeader("X-Robot") != "" {
+			c.Set("robot", true)
+		} else {
+			c.Set("robot", false)
+			for _, rgxp := range regexps {
+				if rgxp.MatchString(c.Request.UserAgent()) {
+					c.Set("robot", true)
+				}
 			}
 		}
 		c.Next()
