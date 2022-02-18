@@ -138,6 +138,10 @@ func (w *WebServer) httpLogger(logger *zerolog.Logger) gin.HandlerFunc {
 			path = path + "?" + raw
 		}
 
+		if _, exists := c.Get("httpNoLogging"); exists {
+			return
+		}
+
 		logger.Info().
 			Int64("latency", time.Now().Sub(start).Milliseconds()).
 			Str("clientIp", c.ClientIP()).
