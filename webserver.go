@@ -1,8 +1,11 @@
 package webserver
 
 import (
+	"context"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
+	"net/http"
 	"regexp"
 	"strconv"
 	"sync"
@@ -11,9 +14,14 @@ import (
 
 var robotsUserAgent = []string{"facebook", "WhatsApp", "Viber", "TelegramBot", "Twitter", "Instagram", "Wget"}
 
+// InitTimeout defines a webserver initialization timeout,
+// a maximum duration the RunBg method is blocked at
+var InitTimeout = time.Millisecond * 100
+
 type WebServerConfig struct {
 	Logger     *zerolog.Logger
 	LoggerHttp *zerolog.Logger
+	Addr       string
 	Port       int
 }
 
@@ -27,6 +35,7 @@ type WebServer struct {
 	gin       *gin.Engine
 	altRoutes []iRoute
 	state     globalState
+	srv       *http.Server // is only used in gorouting startup mode
 }
 
 type iRoute struct {
@@ -110,7 +119,6 @@ func (w *WebServer) AltRouter(c *gin.Context) {
 	for _, route := range w.altRoutes {
 		if route.Path.MatchString(c.Request.RequestURI) {
 			route.Handler(c)
-			//			c.Next()
 			return
 		}
 	}
@@ -176,13 +184,61 @@ func (w *WebServer) robotsDetect(names []string) gin.HandlerFunc {
 	}
 }
 
+// Run runs a gin server,
+// this method will block the calling goroutine indefinitely unless an error happens.
 func (w WebServer) Run() {
 	log := *(w.config.Logger)
-	log.Info().Int("Port", w.config.Port).Msg("Starting listener")
+	log.Info().Str("Addr", w.config.Addr).Int("Port", w.config.Port).Msg("Starting listener")
 
-	err := w.gin.Run(":" + strconv.Itoa(w.config.Port))
+	err := w.gin.Run(w.bindTo(w.config.Addr, w.config.Port))
 
 	if err != nil {
 		log.Error().Msgf("webserver startup error: %v", err)
 	}
+}
+
+// RunBg runs a gin server in goroutine and exits immediately
+// on server success init or InitTimeout happened,
+func (w *WebServer) RunBg() (err error) {
+	log := *(w.config.Logger)
+	log.Info().Str("Addr", w.config.Addr).Int("Port", w.config.Port).Msg("Starting listener")
+
+	w.srv = &http.Server{
+		Addr:    w.bindTo(w.config.Addr, w.config.Port),
+		Handler: w.gin.Handler(),
+	}
+
+	startupError := make(chan error)
+	go func() {
+		e := w.srv.ListenAndServe()
+		if e != http.ErrServerClosed {
+			startupError <- e
+		}
+	}()
+
+	select {
+	case <-time.After(InitTimeout):
+	case err = <-startupError:
+	}
+
+	if err != nil {
+		log.Error().Msgf("webserver startup error: %v", err)
+		err = fmt.Errorf("can't start web server: %w", err)
+	} else {
+		log.Printf("started and listen on %v", w.srv.Addr)
+	}
+	return
+}
+
+// Shutdown performs gracefully shutdown of a server started with RunBg
+func (w *WebServer) Shutdown(ctx context.Context) (err error) {
+	if w.srv != nil {
+		err = w.srv.Shutdown(ctx)
+		w.config.Logger.Printf("closed")
+	}
+	return nil
+}
+
+func (w WebServer) bindTo(host string, port int) string {
+	return host + ":" + strconv.Itoa(port)
 }
