@@ -225,7 +225,7 @@ func (w *WebServer) RunBg() (err error) {
 		log.Error().Msgf("webserver startup error: %v", err)
 		err = fmt.Errorf("can't start web server: %w", err)
 	} else {
-		log.Printf("started and listen on %v", w.srv.Addr)
+		log.Info().Msgf("webserver was started and listen on %v", w.srv.Addr)
 	}
 	return
 }
@@ -234,7 +234,7 @@ func (w *WebServer) RunBg() (err error) {
 func (w *WebServer) Shutdown(ctx context.Context) (err error) {
 	if w.srv != nil {
 		err = w.srv.Shutdown(ctx)
-		w.config.Logger.Printf("closed")
+		w.config.Logger.Info().Msg("webserver shutdown")
 	}
 	return nil
 }
